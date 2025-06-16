@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Problema da Parada - Indecidibilidade</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .program-area {
+            background: #2c3e50;
+            color: #ecf0f1;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            min-height: 200px;
+        }
+        
+        .execution-area {
+            background: #34495e;
+            color: #ecf0f1;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 100px;
+            overflow-y: auto;
+        }
+        
+        .player-card {
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+        
+        .player-card.active {
+            border-color: #e74c3c !important;
+            background: linear-gradient(45deg, #fff5f5, #ffffff) !important;
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
+        }
+        
+        .player-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            margin-right: 15px;
+        }
+        
+        .player-1 { background: linear-gradient(45deg, #3498db, #2980b9); }
+        .player-2 { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+        .player-3 { background: linear-gradient(45deg, #f39c12, #e67e22); }
+        .player-4 { background: linear-gradient(45deg, #9b59b6, #8e44ad); }
+        
+        .current-player-indicator {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { box-shadow: 0 0 10px rgba(231, 76, 60, 0.5); }
+            to { box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }
+        }
+        
+        .leaderboard {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .leader-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin: 5px 0;
+        }
+        
+        .leader-item.first {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .example-card {
+            background: white;
+            border: 2px solid #ecf0f1;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            height: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .example-card:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .example-code {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .round-indicator {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <div class="text-center mb-4">
+                <h1 class="display-5 text-primary mb-2">🔄 Problema da Parada</h1>
+                <p class="lead text-muted">Indecidibilidade em Ciência da Computação</p>
+                <button class="btn btn-outline-secondary" onclick="goBack()">
+                    <i class="bi bi-arrow-left"></i> Voltar ao Menu
+                </button>
+            </div>
+            
+            <!-- Round Indicator -->
+            <div class="round-indicator" id="roundIndicator">
+                <i class="bi bi-clock"></i> Rodada <span id="currentRound">1</span> de <span id="maxRounds">10</span>
+            </div>
+            
+            <!-- Current Player Indicator -->
+            <div class="current-player-indicator" id="currentPlayerIndicator">
+                <i class="bi bi-person-circle"></i> Vez do <span id="currentPlayerName">Jogador 1</span>
+                <div class="mt-2">
+                    <small>Analise o programa e preveja se ele para ou executa para sempre</small>
+                </div>
+            </div>
+            
+            <!-- Leaderboard -->
+            <div class="leaderboard" id="leaderboard">
+                <h5 class="mb-3"><i class="bi bi-trophy"></i> Placar Geral</h5>
+                <div id="leaderboardContent"></div>
+            </div>
+            
+            <!-- Players Grid -->
+            <div class="row g-3 mb-4" id="playersGrid">
+                <!-- Player cards will be generated here -->
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-code-square"></i> Programa para Análise
+                        </div>
+                        <div class="card-body">
+                            <div class="program-area" id="programDisplay">
+                                // Aguardando programa...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-play-circle"></i> Resultado da Execução
+                        </div>
+                        <div class="card-body">
+                            <div class="execution-area" id="executionDisplay">
+                                Aguardando sua previsão...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <i class="bi bi-question-circle"></i> Sua Previsão
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-3">
+                                <button class="btn btn-success btn-lg" onclick="makePrediction('halt')" id="haltBtn">
+                                    🛑 O programa PARA
+                                </button>
+                                <button class="btn btn-danger btn-lg" onclick="makePrediction('loop')" id="loopBtn">
+                                    🔄 O programa executa PARA SEMPRE
+                                </button>
+                                <button class="btn btn-outline-info" onclick="passTurn()" id="passBtn">
+                                    <i class="bi bi-arrow-right"></i> Passar Vez
+                                </button>
+                            </div>
+                            
+                            <div class="mt-3" id="predictionResult"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-controller"></i> Controles
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary" onclick="generateProgram()">
+                                    <i class="bi bi-arrow-clockwise"></i> Novo Programa
+                                </button>
+                                <button class="btn btn-outline-warning" onclick="showHint()">
+                                    <i class="bi bi-lightbulb"></i> Dica
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="example-card" onclick="loadExample('simple')">
+                        <h6>Exemplo Simples</h6>
+                        <div class="example-code">x = 5
+while x > 0:
+    x = x - 1
+print("Done")</div>
+                        <small class="text-muted">Claramente para</small>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="example-card" onclick="loadExample('infinite')">
+                        <h6>Loop Infinito</h6>
+                        <div class="example-code">x = 1
+while x > 0:
+    x = x + 1
+print("Never")</div>
+                        <small class="text-muted">Loop infinito óbvio</small>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="example-card" onclick="loadExample('complex')">
+                        <h6>Complexo</h6>
+                        <div class="example-code">n = 27
+while n != 1:
+    if n % 2 == 0:
+        n = n // 2
+    else:
+        n = 3*n + 1</div>
+                        <small class="text-muted">Conjectura de Collatz</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-warning" role="alert">
+                <h5 class="alert-heading"><i class="bi bi-lightbulb"></i> O Problema da Parada</h5>
+                <p><strong>Definição:</strong> Dado um programa e uma entrada, é possível determinar se o programa irá parar ou executar para sempre?</p>
+                <p><strong>Resposta de Turing:</strong> NÃO! É matematicamente impossível criar um algoritmo geral que resolva isso para todos os casos.</p>
+                <p><strong>Por quê?:</strong> Isso levaria a um paradoxo lógico. Se existisse tal algoritmo, poderíamos criar um programa que contradiz sua própria previsão.</p>
+                <p class="mb-0"><strong>No jogo:</strong> Vocês tentam prever se programas simples vão parar ou não. Alguns são fáceis, outros são muito difíceis mesmo para humanos!</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal fade" id="gameModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title">Resultado</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modal-text"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Continuar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        class HaltingProblemGame {
+            constructor() {
+                this.parseURLParams();
+                this.currentPlayer = 0;
+                this.currentRound = 1;
+                this.maxRounds = 10;
+                this.gameEnded = false;
+                
+                this.players = [];
+                this.initializePlayers();
+                
+                this.currentProgram = null;
+                this.waitingForPrediction = false;
+                
+                this.programs = [
+                    {
+                        code: `x = 10
+while x > 0:
+    x = x - 1
+    print(f"x = {x}")
+print("Finished!")`,
+                        halts: true,
+                        difficulty: 'easy',
+                        description: 'Countdown simples'
+                    },
+                    {
+                        code: `x = 1
+while True:
+    x = x + 1
+    print(f"x = {x}")`,
+                        halts: false,
+                        difficulty: 'easy',
+                        description: 'Loop infinito óbvio'
+                    },
+                    {
+                        code: `n = 16
+while n != 1:
+    if n % 2 == 0:
+                        n = n // 2
+    else:
+        n = 3*n + 1
+    print(f"n = {n}")
+print("Collatz sequence ended!")`,
+                        halts: true,
+                        difficulty: 'medium',
+                        description: 'Conjectura de Collatz (para)'
+                    },
+                    {
+                        code: `def func(n):
+    if n <= 1:
+        return 1
+    return func(n-1) + func(n-2)
+
+result = func(5)
+print(f"Result: {result}")`,
+                        halts: true,
+                        difficulty: 'medium',
+                        description: 'Fibonacci recursivo'
+                    },
+                    {
+                        code: `x = 2
+while x > 0:
+    if x % 2 == 0:
+        x = x // 2
+    else:
+        x = x * 3 + 1
+    if x > 1000:
+        x = 1
+print("Done")`,
+                        halts: true,
+                        difficulty: 'hard',
+                        description: 'Variação modificada'
+                    },
+                    {
+                        code: `import random
+x = 1
+while x != 100:
+    x = random.randint(1, 200)
+    print(f"x = {x}")
+print("Found 100!")`,
+                        halts: true,
+                        difficulty: 'hard',
+                        description: 'Busca aleatória (provavelmente para)'
+                    },
+                    {
+                        code: `def is_prime(n):
+    if n < 2:
+        return False
+    for i in range(2, int(n**0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
+
+n = 2
+while True:
+    if is_prime(n) and is_prime(n+2):
+        print(f"Twin primes: {n}, {n+2}")
+        n += 1
+    else:
+        n += 1`,
+                        halts: false,
+                        difficulty: 'expert',
+                        description: 'Busca por primos gêmeos (não para)'
+                    },
+                    {
+                        code: `x = 5
+y = 7
+while x != y:
+    if x > y:
+        x = x - y
+    else:
+        y = y - x
+print(f"GCD: {x}")`,
+                        halts: true,
+                        difficulty: 'medium',
+                        description: 'Algoritmo de Euclides'
+                    }
+                ];
+                
+                this.generateProgram();
+                this.updateUI();
+            }
+            
+            parseURLParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                this.playerCount = parseInt(urlParams.get('playerCount')) || 2;
+                
+                try {
+                    this.playerNames = JSON.parse(urlParams.get('players')) || ['Jogador 1', 'Jogador 2'];
+                } catch {
+                    this.playerNames = ['Jogador 1', 'Jogador 2'];
+                }
+                
+                while (this.playerNames.length < this.playerCount) {
+                    this.playerNames.push(`Jogador ${this.playerNames.length + 1}`);
+                }
+            }
+            
+            initializePlayers() {
+                for (let i = 0; i < this.playerCount; i++) {
+                    this.players.push({
+                        name: this.playerNames[i],
+                        score: 0,
+                        correctPredictions: 0,
+                        totalPredictions: 0,
+                        predictions: []
+                    });
+                }
+            }
+            
+            generateProgram() {
+                const availablePrograms = this.programs.filter(p => 
+                    this.currentRound <= 3 ? p.difficulty === 'easy' :
+                    this.currentRound <= 6 ? p.difficulty !== 'expert' :
+                    true
+                );
+                
+                this.currentProgram = availablePrograms[Math.floor(Math.random() * availablePrograms.length)];
+                
+                document.getElementById('programDisplay').textContent = this.currentProgram.code;
+                
+                // Clear previous results
+                document.getElementById('executionDisplay').textContent = 'Aguardando sua previsão...';
+                document.getElementById('predictionResult').textContent = '';
+                
+                this.waitingForPrediction = true;
+                this.resetPredictionButtons();
+            }
+            
+            resetPredictionButtons() {
+                const buttons = ['haltBtn', 'loopBtn', 'passBtn'];
+                buttons.forEach(btnId => {
+                    const btn = document.getElementById(btnId);
+                    btn.disabled = this.waitingForPrediction && this.gameEnded;
+                });
+            }
+            
+            makePrediction(prediction) {
+                if (!this.waitingForPrediction || this.gameEnded) return;
+                
+                const currentPlayerData = this.players[this.currentPlayer];
+                
+                currentPlayerData.predictions.push({
+                    round: this.currentRound,
+                    prediction: prediction,
+                    program: this.currentProgram
+                });
+                
+                currentPlayerData.totalPredictions++;
+                
+                // Show prediction
+                const predictionText = prediction === 'halt' ? '🛑 Programa para' : '🔄 Loop infinito';
+                document.getElementById('predictionResult').innerHTML = `<strong>${predictionText}</strong>`;
+                
+                // Simulate program execution
+                this.executeProgram(prediction);
+            }
+            
+            executeProgram(prediction) {
+                const executionDiv = document.getElementById('executionDisplay');
+                executionDiv.innerHTML = '<div class="spinner"></div>Executando programa...';
+                
+                // Simulate execution time
+                setTimeout(() => {
+                    const correct = (prediction === 'halt' && this.currentProgram.halts) || 
+                                   (prediction === 'loop' && !this.currentProgram.halts);
+                    
+                    const currentPlayerData = this.players[this.currentPlayer];
+                    
+                    let result = '';
+                    if (correct) {
+                        result = '<span class="text-success">✅ Correto!</span>';
+                        currentPlayerData.score += this.getPoints();
+                        currentPlayerData.correctPredictions++;
+                    } else {
+                        result = '<span class="text-danger">❌ Incorreto!</span>';
+                    }
+                    
+                    const actualResult = this.currentProgram.halts ? 'O programa para' : 'O programa não para (loop infinito)';
+                    result += `<br><small>${actualResult}</small>`;
+                    result += `<br><small>${this.currentProgram.description}</small>`;
+                    
+                    executionDiv.innerHTML = result;
+                    
+                    this.waitingForPrediction = false;
+                    
+                    // Check if all players finished this round
+                    if (this.allPlayersFinished()) {
+                        setTimeout(() => this.nextRound(), 3000);
+                    } else {
+                        setTimeout(() => this.nextPlayer(), 3000);
+                    }
+                    
+                    this.updateUI();
+                }, 2000);
+            }
+            
+            getPoints() {
+                // More points for harder programs
+                const difficulty = this.currentProgram.difficulty;
+                switch (difficulty) {
+                    case 'easy': return 10;
+                    case 'medium': return 20;
+                    case 'hard': return 30;
+                    case 'expert': return 50;
+                    default: return 10;
+                }
+            }
+            
+            allPlayersFinished() {
+                return this.players.every(player => 
+                    player.predictions.some(p => p.round === this.currentRound)
+                );
+            }
+            
+            passTurn() {
+                if (!this.waitingForPrediction) return;
+                
+                this.waitingForPrediction = false;
+                document.getElementById('predictionResult').innerHTML = '<em>Passou a vez</em>';
+                
+                if (this.allPlayersFinished()) {
+                    setTimeout(() => this.nextRound(), 1000);
+                } else {
+                    this.nextPlayer();
+                }
+            }
+            
+            nextPlayer() {
+                this.currentPlayer = (this.currentPlayer + 1) % this.playerCount;
+                
+                // Skip players who already played this round
+                while (this.players[this.currentPlayer].predictions.some(p => p.round === this.currentRound)) {
+                    this.currentPlayer = (this.currentPlayer + 1) % this.playerCount;
+                    
+                    // If we've cycled through all players, move to next round
+                    if (this.allPlayersFinished()) {
+                        this.nextRound();
+                        return;
+                    }
+                }
+                
+                this.waitingForPrediction = true;
+                this.resetPredictionButtons();
+                this.updateUI();
+            }
+            
+            nextRound() {
+                this.currentRound++;
+                
+                if (this.currentRound > this.maxRounds) {
+                    this.endGame();
+                    return;
+                }
+                
+                this.currentPlayer = 0;
+                this.generateProgram();
+                this.updateUI();
+                this.showToast(`🎮 Rodada ${this.currentRound}/${this.maxRounds} iniciada!`, 'success');
+            }
+            
+            endGame() {
+                this.gameEnded = true;
+                
+                const sortedPlayers = [...this.players].sort((a, b) => b.score - a.score);
+                
+                let message = `🏆 Fim do Jogo!<br><br>`;
+                message += `📊 Resultado Final:<br>`;
+                
+                sortedPlayers.forEach((player, index) => {
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+                    const accuracy = player.totalPredictions > 0 ? 
+                        Math.round((player.correctPredictions / player.totalPredictions) * 100) : 0;
+                    message += `${medal} ${index + 1}º - ${player.name}: ${player.score} pontos<br>`;
+                    message += `&nbsp;&nbsp;&nbsp;&nbsp;└ Acertou ${player.correctPredictions}/${player.totalPredictions} previsões (${accuracy}%)<br>`;
+                });
+                
+                message += `<br><small>O Problema da Parada é indecidível - não existe algoritmo geral que resolva todos os casos!</small>`;
+                
+                this.showModal('Fim do Jogo!', message);
+            }
+            
+            updateUI() {
+                // Update round indicator
+                document.getElementById('currentRound').textContent = this.currentRound;
+                document.getElementById('maxRounds').textContent = this.maxRounds;
+                
+                // Update current player indicator
+                const currentPlayerData = this.players[this.currentPlayer];
+                document.getElementById('currentPlayerName').textContent = currentPlayerData.name;
+                
+                // Update players grid
+                this.updatePlayersGrid();
+                
+                // Update leaderboard
+                this.updateLeaderboard();
+            }
+            
+            updatePlayersGrid() {
+                const container = document.getElementById('playersGrid');
+                container.innerHTML = '';
+                
+                this.players.forEach((player, index) => {
+                    const colClass = this.playerCount <= 2 ? 'col-md-6' : 'col-lg-3 col-md-6';
+                    const isActive = index === this.currentPlayer && this.waitingForPrediction;
+                    const accuracy = player.totalPredictions > 0 ? 
+                        Math.round((player.correctPredictions / player.totalPredictions) * 100) : 0;
+                    
+                    const playerCard = document.createElement('div');
+                    playerCard.className = colClass;
+                    playerCard.innerHTML = `
+                        <div class="card player-card ${isActive ? 'active' : ''} border-primary">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="player-avatar player-${index + 1}">
+                                    ${index + 1}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title mb-1">${player.name}</h6>
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <small class="text-muted">Pontos</small>
+                                            <div class="fw-bold text-primary">${player.score}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted">Acertos</small>
+                                            <div class="fw-bold text-success">${player.correctPredictions}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted">Precisão</small>
+                                            <div class="fw-bold text-info">${accuracy}%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(playerCard);
+                });
+            }
+            
+            updateLeaderboard() {
+                const container = document.getElementById('leaderboardContent');
+                const sortedPlayers = [...this.players].sort((a, b) => b.score - a.score);
+                
+                container.innerHTML = '';
+                
+                sortedPlayers.forEach((player, index) => {
+                    const isFirst = index === 0;
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+                    
+                    const leaderItem = document.createElement('div');
+                    leaderItem.className = `leader-item ${isFirst ? 'first' : ''}`;
+                    leaderItem.innerHTML = `
+                        <div>
+                            <span class="me-2">${medal}</span>
+                            <strong>${player.name}</strong>
+                            <small class="ms-2">${player.correctPredictions} acertos</small>
+                        </div>
+                        <div class="text-end">
+                            <strong>${player.score} pts</strong>
+                        </div>
+                    `;
+                    container.appendChild(leaderItem);
+                });
+            }
+            
+            loadExample(type) {
+                const examples = {
+                    simple: this.programs.find(p => p.description === 'Countdown simples'),
+                    infinite: this.programs.find(p => p.description === 'Loop infinito óbvio'),
+                    complex: this.programs.find(p => p.description === 'Conjectura de Collatz (para)')
+                };
+                
+                this.currentProgram = examples[type];
+                document.getElementById('programDisplay').textContent = this.currentProgram.code;
+                
+                this.showToast(`📝 Exemplo carregado: ${this.currentProgram.description}`, 'info');
+            }
+            
+            showHint() {
+                let hint = '';
+                
+                switch (this.currentProgram.difficulty) {
+                    case 'easy':
+                        hint = '💡 Dica: Analise se há uma condição que certamente será atingida (para) ou se algo impede isso (loop infinito).';
+                        break;
+                    case 'medium':
+                        hint = '💡 Dica: Observe os padrões matemáticos. Algumas sequências são conhecidas por convergirem sempre.';
+                        break;
+                    case 'hard':
+                        hint = '💡 Dica: Procure por condições de escape ou limitadores que possam interromper loops aparentemente infinitos.';
+                        break;
+                    case 'expert':
+                        hint = '💡 Dica: Este é um problema em aberto na matemática! Mesmo especialistas não sabem a resposta definitiva.';
+                        break;
+                }
+                
+                this.showToast(hint, 'info');
+            }
+            
+            showToast(message, type = 'info') {
+                const toastContainer = document.getElementById('toast-container') || this.createToastContainer();
+                
+                const toastEl = document.createElement('div');
+                toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+                toastEl.setAttribute('role', 'alert');
+                toastEl.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                `;
+                
+                toastContainer.appendChild(toastEl);
+                const toast = new bootstrap.Toast(toastEl);
+                toast.show();
+                
+                toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+            }
+            
+            createToastContainer() {
+                const container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'toast-container position-fixed top-0 end-0 p-3';
+                container.style.zIndex = '1055';
+                document.body.appendChild(container);
+                return container;
+            }
+            
+            showModal(title, message) {
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-text').innerHTML = message;
+                const modal = new bootstrap.Modal(document.getElementById('gameModal'));
+                modal.show();
+            }
+        }
+        
+        let game = new HaltingProblemGame();
+        
+        function makePrediction(prediction) {
+            game.makePrediction(prediction);
+        }
+        
+        function passTurn() {
+            game.passTurn();
+        }
+        
+        function generateProgram() {
+            game.generateProgram();
+        }
+        
+        function loadExample(type) {
+            game.loadExample(type);
+        }
+        
+        function showHint() {
+            game.showHint();
+        }
+        
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

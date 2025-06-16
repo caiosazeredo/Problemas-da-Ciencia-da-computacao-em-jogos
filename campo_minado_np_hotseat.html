@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campo Minado NP - Problema P vs NP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .game-board {
+            display: grid;
+            gap: 2px;
+            background: #2d3436;
+            padding: 15px;
+            border-radius: 10px;
+            justify-content: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .cell {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #636e72;
+            background: #b2bec3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+        }
+        
+        .cell:hover {
+            background: #74b9ff;
+            transform: scale(1.05);
+        }
+        
+        .cell.revealed {
+            background: #ddd;
+            border-color: #999;
+            cursor: default;
+        }
+        
+        .cell.mine {
+            background: #e17055;
+            color: white;
+        }
+        
+        .cell.flagged {
+            background: #00b894;
+            color: white;
+        }
+        
+        .cell.number-1 { color: #0984e3; }
+        .cell.number-2 { color: #00b894; }
+        .cell.number-3 { color: #e17055; }
+        .cell.number-4 { color: #6c5ce7; }
+        .cell.number-5 { color: #a29bfe; }
+        .cell.number-6 { color: #fd79a8; }
+        .cell.number-7 { color: #2d3436; }
+        .cell.number-8 { color: #636e72; }
+        
+        .player-card {
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+        
+        .player-card.active {
+            border-color: #e74c3c !important;
+            background: linear-gradient(45deg, #fff5f5, #ffffff) !important;
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
+        }
+        
+        .player-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            margin-right: 15px;
+        }
+        
+        .player-1 { background: linear-gradient(45deg, #3498db, #2980b9); }
+        .player-2 { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+        .player-3 { background: linear-gradient(45deg, #f39c12, #e67e22); }
+        .player-4 { background: linear-gradient(45deg, #9b59b6, #8e44ad); }
+        
+        .current-player-indicator {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { box-shadow: 0 0 10px rgba(231, 76, 60, 0.5); }
+            to { box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }
+        }
+        
+        .leaderboard {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .leader-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin: 5px 0;
+        }
+        
+        .leader-item.first {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .round-indicator {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .game-stats {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .game-over-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+        }
+        
+        @media (max-width: 768px) {
+            .cell {
+                width: 30px;
+                height: 30px;
+                font-size: 12px;
+            }
+            
+            .game-board {
+                gap: 1px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <div class="text-center mb-4">
+                <h1 class="display-5 text-primary mb-2">💣 Campo Minado NP</h1>
+                <p class="lead text-muted">Demonstração P vs NP - Verificar vs Resolver</p>
+                <button class="btn btn-outline-secondary" onclick="goBack()">
+                    <i class="bi bi-arrow-left"></i> Voltar ao Menu
+                </button>
+            </div>
+            
+            <!-- Round Indicator -->
+            <div class="round-indicator" id="roundIndicator">
+                <i class="bi bi-clock"></i> Rodada <span id="currentRound">1</span> de <span id="maxRounds">5</span>
+            </div>
+            
+            <!-- Current Player Indicator -->
+            <div class="current-player-indicator" id="currentPlayerIndicator">
+                <i class="bi bi-person-circle"></i> Vez do <span id="currentPlayerName">Jogador 1</span>
+                <div class="mt-2">
+                    <small>Clique esquerdo para revelar, clique direito para marcar</small>
+                </div>
+            </div>
+            
+            <!-- Leaderboard -->
+            <div class="leaderboard" id="leaderboard">
+                <h5 class="mb-3"><i class="bi bi-trophy"></i> Placar Geral</h5>
+                <div id="leaderboardContent"></div>
+            </div>
+            
+            <!-- Players Grid -->
+            <div class="row g-3 mb-4" id="playersGrid">
+                <!-- Player cards will be generated here -->
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <i class="bi bi-grid-3x3"></i> Campo Minado
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="game-board" id="gameBoard">
+                                <!-- Game board will be generated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header bg-info text-white">
+                            <i class="bi bi-info-circle"></i> Estatísticas do Jogo
+                        </div>
+                        <div class="card-body">
+                            <div class="game-stats">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <small class="text-muted">Minas</small>
+                                        <div class="fw-bold text-danger" id="mineCount">10</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="text-muted">Bandeiras</small>
+                                        <div class="fw-bold text-success" id="flagCount">0</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="text-muted">Reveladas</small>
+                                        <div class="fw-bold text-primary" id="revealedCount">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header bg-warning text-dark">
+                            <i class="bi bi-gear"></i> Dificuldade
+                        </div>
+                        <div class="card-body">
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="difficulty" id="easy" value="easy" checked>
+                                <label class="btn btn-outline-primary" for="easy">Fácil</label>
+                                
+                                <input type="radio" class="btn-check" name="difficulty" id="medium" value="medium">
+                                <label class="btn btn-outline-primary" for="medium">Médio</label>
+                                
+                                <input type="radio" class="btn-check" name="difficulty" id="hard" value="hard">
+                                <label class="btn btn-outline-primary" for="hard">Difícil</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <i class="bi bi-controller"></i> Controles
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary" onclick="newGame()">
+                                    <i class="bi bi-arrow-clockwise"></i> Novo Jogo
+                                </button>
+                                <button class="btn btn-outline-info" onclick="passTurn()">
+                                    <i class="bi bi-arrow-right"></i> Passar Vez
+                                </button>
+                                <button class="btn btn-outline-warning" onclick="showHint()">
+                                    <i class="bi bi-lightbulb"></i> Dica P vs NP
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-info" role="alert">
+                <h5 class="alert-heading"><i class="bi bi-lightbulb"></i> P vs NP no Campo Minado</h5>
+                <p><strong>Verificar (P):</strong> Se alguém te der uma solução, você pode verificar rapidamente se está correta checando se as células marcadas realmente contêm minas.</p>
+                <p><strong>Resolver (NP?):</strong> Encontrar a solução ótima pode ser muito difícil - você precisa deduzir onde estão as minas usando apenas as pistas numéricas.</p>
+                <p><strong>Estratégia:</strong> Use lógica dedutiva! Se uma célula com "1" já tem uma mina vizinha marcada, as outras células ao redor estão seguras.</p>
+                <p class="mb-0"><strong>Pontuação:</strong> Ganhe pontos por revelar células seguras, perca pontos por explodir minas. Marcar minas corretamente também dá pontos!</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Over Modal -->
+    <div class="game-over" id="gameOver">
+        <div class="game-over-content">
+            <h3 id="gameOverTitle">Fim do Jogo!</h3>
+            <p id="gameOverMessage"></p>
+            <button class="btn btn-primary" onclick="closeGameOver()">Continuar</button>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal fade" id="gameModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title">Resultado</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modal-text"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Continuar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        class MinesweeperGame {
+            constructor() {
+                this.parseURLParams();
+                this.currentPlayer = 0;
+                this.currentRound = 1;
+                this.maxRounds = 5;
+                this.gameEnded = false;
+                this.roundEnded = false;
+                
+                this.players = [];
+                this.initializePlayers();
+                
+                this.difficulty = 'easy';
+                this.boardSize = { width: 9, height: 9 };
+                this.mineCount = 10;
+                this.board = [];
+                this.gameState = 'playing'; // playing, won, lost
+                this.revealedCells = 0;
+                this.flaggedCells = 0;
+                
+                this.initializeEventListeners();
+                this.initializeBoard();
+                this.updateUI();
+            }
+            
+            parseURLParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                this.playerCount = parseInt(urlParams.get('playerCount')) || 2;
+                
+                try {
+                    this.playerNames = JSON.parse(urlParams.get('players')) || ['Jogador 1', 'Jogador 2'];
+                } catch {
+                    this.playerNames = ['Jogador 1', 'Jogador 2'];
+                }
+                
+                while (this.playerNames.length < this.playerCount) {
+                    this.playerNames.push(`Jogador ${this.playerNames.length + 1}`);
+                }
+            }
+            
+            initializePlayers() {
+                for (let i = 0; i < this.playerCount; i++) {
+                    this.players.push({
+                        name: this.playerNames[i],
+                        score: 0,
+                        roundScore: 0,
+                        cellsRevealed: 0,
+                        minesFound: 0,
+                        minesExploded: 0,
+                        roundsPlayed: 0,
+                        hasPlayed: false
+                    });
+                }
+            }
+            
+            initializeEventListeners() {
+                document.querySelectorAll('input[name="difficulty"]').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        this.difficulty = radio.value;
+                        this.updateDifficulty();
+                        this.initializeBoard();
+                    });
+                });
+            }
+            
+            updateDifficulty() {
+                switch (this.difficulty) {
+                    case 'easy':
+                        this.boardSize = { width: 9, height: 9 };
+                        this.mineCount = 10;
+                        break;
+                    case 'medium':
+                        this.boardSize = { width: 12, height: 9 };
+                        this.mineCount = 15;
+                        break;
+                    case 'hard':
+                        this.boardSize = { width: 15, height: 9 };
+                        this.mineCount = 20;
+                        break;
+                }
+            }
+            
+            initializeBoard() {
+                this.board = [];
+                this.gameState = 'playing';
+                this.revealedCells = 0;
+                this.flaggedCells = 0;
+                this.roundEnded = false;
+                
+                // Reset current player's round score
+                this.players[this.currentPlayer].roundScore = 0;
+                this.players[this.currentPlayer].hasPlayed = false;
+                
+                // Create empty board
+                for (let y = 0; y < this.boardSize.height; y++) {
+                    this.board[y] = [];
+                    for (let x = 0; x < this.boardSize.width; x++) {
+                        this.board[y][x] = {
+                            isMine: false,
+                            isRevealed: false,
+                            isFlagged: false,
+                            neighborMines: 0
+                        };
+                    }
+                }
+                
+                // Place mines randomly
+                this.placeMines();
+                
+                // Calculate neighbor counts
+                this.calculateNeighbors();
+                
+                // Render board
+                this.renderBoard();
+                this.updateStats();
+            }
+            
+            placeMines() {
+                let minesPlaced = 0;
+                while (minesPlaced < this.mineCount) {
+                    const x = Math.floor(Math.random() * this.boardSize.width);
+                    const y = Math.floor(Math.random() * this.boardSize.height);
+                    
+                    if (!this.board[y][x].isMine) {
+                        this.board[y][x].isMine = true;
+                        minesPlaced++;
+                    }
+                }
+            }
+            
+            calculateNeighbors() {
+                for (let y = 0; y < this.boardSize.height; y++) {
+                    for (let x = 0; x < this.boardSize.width; x++) {
+                        if (!this.board[y][x].isMine) {
+                            let count = 0;
+                            for (let dy = -1; dy <= 1; dy++) {
+                                for (let dx = -1; dx <= 1; dx++) {
+                                    const ny = y + dy;
+                                    const nx = x + dx;
+                                    if (ny >= 0 && ny < this.boardSize.height && 
+                                        nx >= 0 && nx < this.boardSize.width &&
+                                        this.board[ny][nx].isMine) {
+                                        count++;
+                                    }
+                                }
+                            }
+                            this.board[y][x].neighborMines = count;
+                        }
+                    }
+                }
+            }
+            
+            renderBoard() {
+                const gameBoard = document.getElementById('gameBoard');
+                gameBoard.innerHTML = '';
+                gameBoard.style.gridTemplateColumns = `repeat(${this.boardSize.width}, 1fr)`;
+                
+                for (let y = 0; y < this.boardSize.height; y++) {
+                    for (let x = 0; x < this.boardSize.width; x++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.x = x;
+                        cell.dataset.y = y;
+                        
+                        const cellData = this.board[y][x];
+                        
+                        if (cellData.isRevealed) {
+                            cell.classList.add('revealed');
+                            if (cellData.isMine) {
+                                cell.classList.add('mine');
+                                cell.textContent = '💣';
+                            } else if (cellData.neighborMines > 0) {
+                                cell.textContent = cellData.neighborMines;
+                                cell.classList.add(`number-${cellData.neighborMines}`);
+                            }
+                        } else if (cellData.isFlagged) {
+                            cell.classList.add('flagged');
+                            cell.textContent = '🚩';
+                        }
+                        
+                        cell.addEventListener('click', (e) => this.handleCellClick(e, x, y));
+                        cell.addEventListener('contextmenu', (e) => this.handleRightClick(e, x, y));
+                        
+                        gameBoard.appendChild(cell);
+                    }
+                }
+            }
+            
+            handleCellClick(e, x, y) {
+                e.preventDefault();
+                if (this.gameState !== 'playing' || this.roundEnded) return;
+                
+                const cell = this.board[y][x];
+                if (cell.isRevealed || cell.isFlagged) return;
+                
+                this.players[this.currentPlayer].hasPlayed = true;
+                
+                if (cell.isMine) {
+                    // Hit a mine
+                    this.explodeMine(x, y);
+                } else {
+                    // Safe cell
+                    this.revealCell(x, y);
+                }
+                
+                this.checkWinCondition();
+                this.renderBoard();
+                this.updateStats();
+                this.updateUI();
+            }
+            
+            handleRightClick(e, x, y) {
+                e.preventDefault();
+                if (this.gameState !== 'playing' || this.roundEnded) return;
+                
+                const cell = this.board[y][x];
+                if (cell.isRevealed) return;
+                
+                this.players[this.currentPlayer].hasPlayed = true;
+                
+                cell.isFlagged = !cell.isFlagged;
+                
+                if (cell.isFlagged) {
+                    this.flaggedCells++;
+                    if (cell.isMine) {
+                        // Correctly flagged a mine
+                        this.players[this.currentPlayer].roundScore += 5;
+                        this.players[this.currentPlayer].minesFound++;
+                        this.showToast(`💡 ${this.players[this.currentPlayer].name} marcou uma mina! +5 pontos`, 'success');
+                    } else {
+                        // Incorrectly flagged
+                        this.players[this.currentPlayer].roundScore -= 2;
+                        this.showToast(`❌ ${this.players[this.currentPlayer].name} marcou incorretamente. -2 pontos`, 'warning');
+                    }
+                } else {
+                    this.flaggedCells--;
+                    if (cell.isMine) {
+                        this.players[this.currentPlayer].roundScore -= 5;
+                        this.players[this.currentPlayer].minesFound--;
+                    } else {
+                        this.players[this.currentPlayer].roundScore += 2;
+                    }
+                }
+                
+                this.renderBoard();
+                this.updateStats();
+                this.updateUI();
+            }
+            
+            explodeMine(x, y) {
+                this.board[y][x].isRevealed = true;
+                this.players[this.currentPlayer].roundScore -= 10;
+                this.players[this.currentPlayer].minesExploded++;
+                
+                this.showToast(`💥 ${this.players[this.currentPlayer].name} explodiu uma mina! -10 pontos`, 'danger');
+                
+                // End turn after hitting a mine
+                setTimeout(() => {
+                    this.passTurn();
+                }, 2000);
+            }
+            
+            revealCell(x, y) {
+                const cell = this.board[y][x];
+                if (cell.isRevealed || cell.isFlagged) return;
+                
+                cell.isRevealed = true;
+                this.revealedCells++;
+                this.players[this.currentPlayer].roundScore += 1;
+                this.players[this.currentPlayer].cellsRevealed++;
+                
+                // If cell has no neighboring mines, reveal all neighbors
+                if (cell.neighborMines === 0) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const ny = y + dy;
+                            const nx = x + dx;
+                            if (ny >= 0 && ny < this.boardSize.height && 
+                                nx >= 0 && nx < this.boardSize.width) {
+                                this.revealCell(nx, ny);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            checkWinCondition() {
+                const totalCells = this.boardSize.width * this.boardSize.height;
+                const safeCells = totalCells - this.mineCount;
+                
+                if (this.revealedCells >= safeCells) {
+                    this.gameState = 'won';
+                    this.endPlayerTurn(true);
+                }
+            }
+            
+            endPlayerTurn(won = false) {
+                const currentPlayerData = this.players[this.currentPlayer];
+                
+                if (won) {
+                    currentPlayerData.roundScore += 20; // Bonus for winning
+                    this.showToast(`🎉 ${currentPlayerData.name} venceu a rodada! +20 pontos bônus`, 'success');
+                }
+                
+                currentPlayerData.score += Math.max(0, currentPlayerData.roundScore);
+                
+                // Show round result
+                let message = `📊 Resultado de ${currentPlayerData.name}:<br>`;
+                message += `Células reveladas: ${currentPlayerData.cellsRevealed}<br>`;
+                message += `Minas encontradas: ${currentPlayerData.minesFound}<br>`;
+                message += `Pontos da rodada: ${currentPlayerData.roundScore}<br>`;
+                
+                if (won) {
+                    message += `<br>🏆 Conseguiu limpar o campo!`;
+                }
+                
+                this.showModal('Fim do Turno', message);
+                
+                setTimeout(() => {
+                    this.passTurn();
+                }, 3000);
+            }
+            
+            passTurn() {
+                if (this.roundEnded) return;
+                
+                this.players[this.currentPlayer].roundsPlayed++;
+                this.currentPlayer = (this.currentPlayer + 1) % this.playerCount;
+                
+                if (this.allPlayersFinished()) {
+                    this.endRound();
+                } else {
+                    this.initializeBoard();
+                    this.updateUI();
+                }
+            }
+            
+            allPlayersFinished() {
+                return this.players.every(player => player.roundsPlayed >= this.currentRound);
+            }
+            
+            endRound() {
+                this.roundEnded = true;
+                
+                // Find round winner
+                const roundScores = this.players.map(p => p.roundScore);
+                const maxScore = Math.max(...roundScores);
+                const winners = this.players.filter(p => p.roundScore === maxScore);
+                
+                let message = `📊 Resultado da Rodada ${this.currentRound}:<br><br>`;
+                
+                this.players.forEach((player) => {
+                    const isWinner = player.roundScore === maxScore;
+                    const medal = isWinner ? '🥇' : '🥈';
+                    message += `${medal} ${player.name}: ${player.roundScore} pontos<br>`;
+                });
+                
+                message += `<br>`;
+                if (winners.length === 1) {
+                    message += `🎉 ${winners[0].name} venceu a rodada!`;
+                } else {
+                    message += `🤝 Empate entre: ${winners.map(w => w.name).join(', ')}`;
+                }
+                
+                this.showModal('Fim da Rodada', message);
+                
+                setTimeout(() => {
+                    this.nextRound();
+                }, 4000);
+            }
+            
+            nextRound() {
+                this.currentRound++;
+                
+                if (this.currentRound > this.maxRounds) {
+                    this.endGame();
+                    return;
+                }
+                
+                // Reset for next round
+                this.currentPlayer = 0;
+                this.roundEnded = false;
+                this.players.forEach(player => {
+                    player.roundScore = 0;
+                    player.hasPlayed = false;
+                });
+                
+                this.initializeBoard();
+                this.updateUI();
+                this.showToast(`🎮 Rodada ${this.currentRound}/${this.maxRounds} iniciada!`, 'success');
+            }
+            
+            endGame() {
+                this.gameEnded = true;
+                
+                const sortedPlayers = [...this.players].sort((a, b) => b.score - a.score);
+                
+                let message = `🏆 Fim do Jogo!<br><br>`;
+                message += `📊 Resultado Final:<br>`;
+                
+                sortedPlayers.forEach((player, index) => {
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+                    message += `${medal} ${index + 1}º - ${player.name}: ${player.score} pontos<br>`;
+                    message += `&nbsp;&nbsp;&nbsp;&nbsp;└ ${player.cellsRevealed} células reveladas, ${player.minesFound} minas encontradas<br>`;
+                });
+                
+                message += `<br><small>Verificar é fácil (P), mas encontrar a solução pode ser difícil (NP)!</small>`;
+                
+                this.showModal('Fim do Jogo!', message);
+            }
+            
+            showHint() {
+                const hints = [
+                    "💡 Se uma célula mostra '1' e já tem uma bandeira vizinha, as outras células ao redor estão seguras!",
+                    "💡 Procure por padrões: células com números iguais ao número de vizinhos podem ter todas marcadas.",
+                    "💡 Use eliminação: se você sabe onde estão algumas minas, pode deduzir onde estão as outras.",
+                    "💡 P vs NP: É fácil verificar se uma solução está correta, mas encontrá-la pode ser exponencialmente difícil!",
+                    "💡 Comece pelas bordas e cantos - eles têm menos vizinhos para analisar."
+                ];
+                
+                const randomHint = hints[Math.floor(Math.random() * hints.length)];
+                this.showToast(randomHint, 'info');
+            }
+            
+            updateStats() {
+                document.getElementById('mineCount').textContent = this.mineCount;
+                document.getElementById('flagCount').textContent = this.flaggedCells;
+                document.getElementById('revealedCount').textContent = this.revealedCells;
+            }
+            
+            updateUI() {
+                // Update round indicator
+                document.getElementById('currentRound').textContent = this.currentRound;
+                document.getElementById('maxRounds').textContent = this.maxRounds;
+                
+                // Update current player indicator
+                const currentPlayerData = this.players[this.currentPlayer];
+                document.getElementById('currentPlayerName').textContent = currentPlayerData.name;
+                
+                // Update players grid
+                this.updatePlayersGrid();
+                
+                // Update leaderboard
+                this.updateLeaderboard();
+            }
+            
+            updatePlayersGrid() {
+                const container = document.getElementById('playersGrid');
+                container.innerHTML = '';
+                
+                this.players.forEach((player, index) => {
+                    const colClass = this.playerCount <= 2 ? 'col-md-6' : 'col-lg-3 col-md-6';
+                    const isActive = index === this.currentPlayer && !this.roundEnded;
+                    
+                    const playerCard = document.createElement('div');
+                    playerCard.className = colClass;
+                    playerCard.innerHTML = `
+                        <div class="card player-card ${isActive ? 'active' : ''} border-primary">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="player-avatar player-${index + 1}">
+                                    ${index + 1}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title mb-1">${player.name}</h6>
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <small class="text-muted">Pontos</small>
+                                            <div class="fw-bold text-primary">${player.score}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted">Minas</small>
+                                            <div class="fw-bold text-success">${player.minesFound}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted">Células</small>
+                                            <div class="fw-bold text-info">${player.cellsRevealed}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(playerCard);
+                });
+            }
+            
+            updateLeaderboard() {
+                const container = document.getElementById('leaderboardContent');
+                const sortedPlayers = [...this.players].sort((a, b) => b.score - a.score);
+                
+                container.innerHTML = '';
+                
+                sortedPlayers.forEach((player, index) => {
+                    const isFirst = index === 0;
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+                    
+                    const leaderItem = document.createElement('div');
+                    leaderItem.className = `leader-item ${isFirst ? 'first' : ''}`;
+                    leaderItem.innerHTML = `
+                        <div>
+                            <span class="me-2">${medal}</span>
+                            <strong>${player.name}</strong>
+                            <small class="ms-2">${player.minesFound} minas</small>
+                        </div>
+                        <div class="text-end">
+                            <strong>${player.score} pts</strong>
+                        </div>
+                    `;
+                    container.appendChild(leaderItem);
+                });
+            }
+            
+            newGame() {
+                this.initializeBoard();
+            }
+            
+            closeGameOver() {
+                document.getElementById('gameOver').style.display = 'none';
+            }
+            
+            showToast(message, type = 'info') {
+                const toastContainer = document.getElementById('toast-container') || this.createToastContainer();
+                
+                const toastEl = document.createElement('div');
+                toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+                toastEl.setAttribute('role', 'alert');
+                toastEl.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                `;
+                
+                toastContainer.appendChild(toastEl);
+                const toast = new bootstrap.Toast(toastEl);
+                toast.show();
+                
+                toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+            }
+            
+            createToastContainer() {
+                const container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'toast-container position-fixed top-0 end-0 p-3';
+                container.style.zIndex = '1055';
+                document.body.appendChild(container);
+                return container;
+            }
+            
+            showModal(title, message) {
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-text').innerHTML = message;
+                const modal = new bootstrap.Modal(document.getElementById('gameModal'));
+                modal.show();
+            }
+        }
+        
+        let game = new MinesweeperGame();
+        
+        function newGame() {
+            game.newGame();
+        }
+        
+        function passTurn() {
+            game.passTurn();
+        }
+        
+        function showHint() {
+            game.showHint();
+        }
+        
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

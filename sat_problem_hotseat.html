@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Problema SAT - Satisfatibilidade Booleana</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .formula-display {
+            background: #2c3e50;
+            color: #ecf0f1;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            min-height: 200px;
+        }
+        
+        .variable-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #ecf0f1;
+            margin-bottom: 10px;
+        }
+        
+        .variable-name {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .value-btn {
+            width: 50px;
+            height: 35px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 2px;
+        }
+        
+        .value-btn.true {
+            background: #2ecc71;
+            color: white;
+        }
+        
+        .value-btn.false {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .value-btn.unset {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .value-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .evaluation-display {
+            background: #34495e;
+            color: #ecf0f1;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .player-card {
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+        
+        .player-card.active {
+            border-color: #e74c3c !important;
+            background: linear-gradient(45deg, #fff5f5, #ffffff) !important;
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
+        }
+        
+        .player-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            margin-right: 15px;
+        }
+        
+        .player-1 { background: linear-gradient(45deg, #3498db, #2980b9); }
+        .player-2 { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+        .player-3 { background: linear-gradient(45deg, #f39c12, #e67e22); }
+        .player-4 { background: linear-gradient(45deg, #9b59b6, #8e44ad); }
+        
+        .current-player-indicator {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { box-shadow: 0 0 10px rgba(231, 76, 60, 0.5); }
+            to { box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }
+        }
+        
+        .leaderboard {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .leader-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin: 5px 0;
+        }
+        
+        .leader-item.first {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .clause.true {
+            color: #2ecc71;
+        }
+        
+        .clause.false {
+            color: #e74c3c;
+        }
+        
+        .clause.unknown {
+            color: #95a5a6;
+        }
+        
+        .satisfiable {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        
+        .unsatisfiable {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <div class="text-center mb-4">
+                <h1 class="display-5 text-primary mb-2">🔧 Problema SAT</h1>
+                <p class="lead text-muted">Satisfatibilidade Booleana - Primeiro Problema NP-Completo</p>
+                <button class="btn btn-outline-secondary" onclick="goBack()">
+                    <i class="bi bi-arrow-left"></i> Voltar ao Menu
+                </button>
+            </div>
+            
+            <!-- Current Player Indicator -->
+            <div class="current-player-indicator" id="currentPlayerIndicator">
+                <i class="bi bi-person-circle"></i> Vez do <span id="currentPlayerName">Jogador 1</span>
+                <div class="mt-2">
+                    <small>Atribua valores às variáveis para satisfazer a fórmula</small>
+                </div>
+            </div>
+            
+            <!-- Leaderboard -->
+            <div class="leaderboard" id="leaderboard">
+                <h5 class="mb-3"><i class="bi bi-trophy"></i> Placar Geral</h5>
+                <div id="leaderboardContent"></div>
+            </div>
+            
+            <!-- Players Grid -->
+            <div class="row g-3 mb-4" id="playersGrid">
+                <!-- Player cards will be generated here -->
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-code-square"></i> Fórmula Booleana
+                        </div>
+                        <div class="card-body">
+                            <div class="formula-display" id="formulaDisplay">
+                                Gerando fórmula...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-sliders"></i> Atribuir Valores às Variáveis
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2" id="variableControls">
+                                <!-- Controles das variáveis serão gerados aqui -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-calculator"></i> Avaliação das Cláusulas
+                        </div>
+                        <div class="card-body">
+                            <div class="evaluation-display" id="evaluationDisplay">
+                                Aguardando atribuição de valores...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <i class="bi bi-gear"></i> Dificuldade
+                        </div>
+                        <div class="card-body">
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="difficulty" id="easy" value="easy" checked>
+                                <label class="btn btn-outline-primary btn-sm" for="easy">Fácil</label>
+                                
+                                <input type="radio" class="btn-check" name="difficulty" id="medium" value="medium">
+                                <label class="btn btn-outline-primary btn-sm" for="medium">Médio</label>
+                                
+                                <input type="radio" class="btn-check" name="difficulty" id="hard" value="hard">
+                                <label class="btn btn-outline-primary btn-sm" for="hard">Difícil</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-controller"></i> Controles
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary" onclick="generateFormula()">
+                                    <i class="bi bi-arrow-clockwise"></i> Nova Fórmula
+                                </button>
+                                <button class="btn btn-success" onclick="checkSatisfiability()">
+                                    <i class="bi bi-check-circle"></i> Verificar SAT
+                                </button>
+                                <button class="btn btn-warning" onclick="clearAssignment()">
+                                    <i class="bi bi-eraser"></i> Limpar Valores
+                                </button>
+                                <button class="btn btn-outline-info" onclick="passTurn()">
+                                    <i class="bi bi-arrow-right"></i> Passar Vez
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-warning mt-4" role="alert">
+                <h5 class="alert-heading"><i class="bi bi-lightbulb"></i> Problema de Satisfatibilidade Booleana (SAT)</h5>
+                <p><strong>Objetivo:</strong> Encontrar valores para as variáveis (A, B, C...) que tornem toda a fórmula VERDADEIRA.</p>
+                <p><strong>Primeiro NP-Completo:</strong> Cook e Levin provaram que SAT é NP-completo, ou seja, qualquer problema NP pode ser reduzido a SAT.</p>
+                <p><strong>Notação:</strong> ∧ = E (AND), ∨ = OU (OR), ¬ = NÃO (NOT). Cada linha entre parênteses é uma cláusula que deve ser verdadeira.</p>
+                <p class="mb-0"><strong>Estratégia:</strong> Tente satisfazer o máximo de cláusulas possível. Se todas forem verdadeiras, a fórmula é satisfatível!</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal fade" id="gameModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title">Resultado</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modal-text"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Continuar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        class SATGame {
+            constructor() {
+                this.parseURLParams();
+                this.currentPlayer = 0;
+                this.gameEnded = false;
+                this.difficulty = 'easy';
+                this.roundsPlayed = 0;
+                this.maxRounds = 8;
+                
+                this.players = [];
+                this.initializePlayers();
+                
+                this.formula = null;
+                this.variables = {};
+                
+                this.initializeEventListeners();
+                this.generateFormula();
+                this.updateUI();
+            }
+            
+            parseURLParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                this.playerCount = parseInt(urlParams.get('playerCount')) || 2;
+                
+                try {
+                    this.playerNames = JSON.parse(urlParams.get('players')) || ['Jogador 1', 'Jogador 2'];
+                } catch {
+                    this.playerNames = ['Jogador 1', 'Jogador 2'];
+                }
+                
+                while (this.playerNames.length < this.playerCount) {
+                    this.playerNames.push(`Jogador ${this.playerNames.length + 1}`);
+                }
+            }
+            
+            initializePlayers() {
+                for (let i = 0; i < this.playerCount; i++) {
+                    this.players.push({
+                        name: this.playerNames[i],
+                        score: 0,
+                        satisfied: 0,
+                        perfectSolutions: 0,
+                        attempts: 0
+                    });
+                }
+            }
+            
+            initializeEventListeners() {
+                document.querySelectorAll('input[name="difficulty"]').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        this.difficulty = radio.value;
+                        this.generateFormula();
+                    });
+                });
+            }
+            
+            generateFormula() {
+                let numVariables, numClauses;
+                
+                switch (this.difficulty) {
+                    case 'easy':
+                        numVariables = 3;
+                        numClauses = 4;
+                        break;
+                    case 'medium':
+                        numVariables = 4;
+                        numClauses = 6;
+                        break;
+                    case 'hard':
+                        numVariables = 5;
+                        numClauses = 8;
+                        break;
+                }
+                
+                this.variables = {};
+                for (let i = 0; i < numVariables; i++) {
+                    const varName = String.fromCharCode(65 + i); // A, B, C, D, E
+                    this.variables[varName] = null; // null = unassigned
+                }
+                
+                this.formula = this.generateRandomSATFormula(numVariables, numClauses);
+                this.displayFormula();
+                this.createVariableControls();
+                this.updateEvaluation();
+            }
+            
+            generateRandomSATFormula(numVars, numClauses) {
+                const formula = [];
+                const varNames = Object.keys(this.variables);
+                
+                for (let i = 0; i < numClauses; i++) {
+                    const clause = [];
+                    const clauseSize = 2 + Math.floor(Math.random() * 2); // 2-3 literals per clause
+                    
+                    for (let j = 0; j < clauseSize; j++) {
+                        const varName = varNames[Math.floor(Math.random() * varNames.length)];
+                        const negated = Math.random() < 0.5;
+                        
+                        // Avoid duplicate literals in same clause
+                        if (!clause.some(lit => lit.variable === varName)) {
+                            clause.push({
+                                variable: varName,
+                                negated: negated
+                            });
+                        }
+                    }
+                    
+                    if (clause.length > 0) {
+                        formula.push(clause);
+                    }
+                }
+                
+                return formula;
+            }
+            
+            displayFormula() {
+                const display = document.getElementById('formulaDisplay');
+                let formulaText = '';
+                
+                this.formula.forEach((clause, clauseIndex) => {
+                    if (clauseIndex > 0) formulaText += ' ∧\n';
+                    formulaText += '(';
+                    
+                    clause.forEach((literal, litIndex) => {
+                        if (litIndex > 0) formulaText += ' ∨ ';
+                        formulaText += literal.negated ? '¬' : '';
+                        formulaText += literal.variable;
+                    });
+                    
+                    formulaText += ')';
+                });
+                
+                display.textContent = formulaText;
+            }
+            
+            createVariableControls() {
+                const container = document.getElementById('variableControls');
+                container.innerHTML = '';
+                
+                Object.keys(this.variables).forEach(varName => {
+                    const colDiv = document.createElement('div');
+                    colDiv.className = 'col-lg-6 col-md-4 col-sm-6';
+                    
+                    const control = document.createElement('div');
+                    control.className = 'variable-control';
+                    
+                    control.innerHTML = `
+                        <div class="variable-name">${varName}</div>
+                        <div class="btn-group" role="group">
+                            <button class="value-btn true" onclick="setVariable('${varName}', true)">T</button>
+                            <button class="value-btn false" onclick="setVariable('${varName}', false)">F</button>
+                            <button class="value-btn unset" onclick="setVariable('${varName}', null)">?</button>
+                        </div>
+                    `;
+                    
+                    colDiv.appendChild(control);
+                    container.appendChild(colDiv);
+                });
+            }
+            
+            setVariable(varName, value) {
+                if (this.gameEnded) return;
+                
+                this.variables[varName] = value;
+                this.updateEvaluation();
+                
+                const valueText = value === null ? '?' : value;
+                this.showToast(`${this.players[this.currentPlayer].name} definiu ${varName} = ${valueText}`, 'info');
+            }
+            
+            updateEvaluation() {
+                const display = document.getElementById('evaluationDisplay');
+                let evaluationText = 'Avaliação das Cláusulas:\n\n';
+                
+                this.formula.forEach((clause, clauseIndex) => {
+                    const clauseValue = this.evaluateClause(clause);
+                    const clauseText = this.clauseToString(clause);
+                    
+                    evaluationText += `Cláusula ${clauseIndex + 1}: ${clauseText} = `;
+                    
+                    if (clauseValue === null) {
+                        evaluationText += '? (indefinido)\n';
+                    } else {
+                        evaluationText += `${clauseValue ? 'VERDADEIRO' : 'FALSO'}\n`;
+                    }
+                });
+                
+                const formulaValue = this.evaluateFormula();
+                evaluationText += `\nFórmula completa: `;
+                if (formulaValue === null) {
+                    evaluationText += '? (indefinido)';
+                } else {
+                    evaluationText += formulaValue ? 'SATISFATÍVEL' : 'INSATISFATÍVEL';
+                }
+                
+                display.textContent = evaluationText;
+            }
+            
+            clauseToString(clause) {
+                return '(' + clause.map(lit => 
+                    (lit.negated ? '¬' : '') + lit.variable + '=' + 
+                    (this.variables[lit.variable] === null ? '?' : this.variables[lit.variable])
+                ).join(' ∨ ') + ')';
+            }
+            
+            evaluateClause(clause) {
+                let hasTrue = false;
+                let hasUndefined = false;
+                
+                for (const literal of clause) {
+                    const varValue = this.variables[literal.variable];
+                    
+                    if (varValue === null) {
+                        hasUndefined = true;
+                    } else {
+                        const literalValue = literal.negated ? !varValue : varValue;
+                        if (literalValue) {
+                            hasTrue = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (hasTrue) return true;
+                if (hasUndefined) return null;
+                return false;
+            }
+            
+            evaluateFormula() {
+                let hasUndefined = false;
+                
+                for (const clause of this.formula) {
+                    const clauseValue = this.evaluateClause(clause);
+                    
+                    if (clauseValue === false) {
+                        return false; // If any clause is false, formula is unsatisfiable
+                    }
+                    
+                    if (clauseValue === null) {
+                        hasUndefined = true;
+                    }
+                }
+                
+                if (hasUndefined) return null;
+                return true; // All clauses are true
+            }
+            
+            checkSatisfiability() {
+                if (this.gameEnded) return;
+                
+                const currentPlayerData = this.players[this.currentPlayer];
+                currentPlayerData.attempts++;
+                
+                const formulaValue = this.evaluateFormula();
+                let score = 0;
+                let satisfiedCount = 0;
+                
+                // Count satisfied clauses
+                this.formula.forEach(clause => {
+                    if (this.evaluateClause(clause) === true) {
+                        satisfiedCount++;
+                    }
+                });
+                
+                // Calculate score
+                if (formulaValue === true) {
+                    score = 50; // Full satisfaction bonus
+                    currentPlayerData.perfectSolutions++;
+                } else {
+                    score = satisfiedCount * 10; // Points per satisfied clause
+                }
+                
+                currentPlayerData.score += score;
+                currentPlayerData.satisfied += satisfiedCount;
+                
+                let message = `🎯 ${currentPlayerData.name}:<br>`;
+                message += `Cláusulas satisfeitas: ${satisfiedCount}/${this.formula.length}<br>`;
+                message += `Pontos ganhos: ${score}<br>`;
+                
+                if (formulaValue === true) {
+                    message += `<br>🎉 Fórmula SATISFATÍVEL! +Bônus!`;
+                } else if (formulaValue === false) {
+                    message += `<br>❌ Fórmula INSATISFATÍVEL!`;
+                } else {
+                    message += `<br>⚠️ Atribuição incompleta!`;
+                }
+                
+                this.showModal('Resultado da Verificação', message);
+                
+                // Check if round should end
+                setTimeout(() => {
+                    if (this.allPlayersFinished()) {
+                        this.nextRound();
+                    } else {
+                        this.nextPlayer();
+                    }
+                }, 3000);
+                
+                this.updateUI();
+            }
+            
+            allPlayersFinished() {
+                return this.players.every(player => player.attempts > this.roundsPlayed);
+            }
+            
+            passTurn() {
+                this.nextPlayer();
+            }
+            
+            nextPlayer() {
+                this.currentPlayer = (this.currentPlayer + 1) % this.playerCount;
+                this.updateUI();
+            }
+            
+            nextRound() {
+                this.roundsPlayed++;
+                
+                if (this.roundsPlayed >= this.maxRounds) {
+                    this.endGame();
+                } else {
+                    this.currentPlayer = 0;
+                    this.generateFormula();
+                    this.updateUI();
+                    this.showToast(`🎮 Rodada ${this.roundsPlayed + 1}/${this.maxRounds} iniciada!`, 'info');
+                }
+            }
+            
+            clearAssignment() {
+                Object.keys(this.variables).forEach(varName => {
+                    this.variables[varName] = null;
+                });
+                this.updateEvaluation();
+                this.showToast('🗑️ Valores limpos!', 'info');
+            }
+            
+            endGame() {
+                this.gameEnded = true;
+                
+                const sortedPlayers = [...this.players].sort((a, b) => b.score - a.score);
+                
+                let message = `🏆 Fim do Jogo!<br><br>`;
+                message += `📊 Resultado Final:<br>`;
+                
+                sortedPlayers.forEach((player, index) => {
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+                    message += `${medal} ${index + 1}º - ${player.name}: ${player.score} pontos<br>`;
+                    message += `&nbsp;&nbsp;&nbsp;&nbsp;└ ${player.satisfied} cláusulas satisfeitas, ${player.perfectSolutions} soluções perfeitas<br>`;
+                });
+                
+                message += `<br><small>SAT é NP-Completo - base de muitos outros problemas difíceis!</small>`;
+                
+                this.showModal('Fim do Jogo!', message);
+            }
+            
+            updateUI() {
+                // Update current player indicator
+                const currentPlayerData = this.players[this.currentPlayer];
+                document.getElementById('currentPlayerName').textContent = currentPlayerData.name;
+                
+                // Update players grid
+                this.updatePlayersGrid();
+                
+                // Update leaderboard
+                this.updateLeaderboard();
+            }
+            
+            updatePlayersGrid() {
+                const container = document.getElementById('playersGrid');
+                container.innerHTML = '';
+                
+                this.players.forEach((player, index) => {
+                    const colClass = this.playerCount <= 2 ? 'col-md-6' : 'col-lg-3 col-md-6';
+                    const isActive = index === this.currentPlayer;
+                    
+                    const playerCard = document.createElement('div');
+                    playerCard.className = colClass;
+                    playerCard.innerHTML = `
+                        <div class="card player-card ${isActive ? 'active' : ''} border-primary">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="player-avatar player-${index + 1}">
+                                    ${index + 1}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title mb-1">${player.name}</h6>
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <small class="text-muted">Pontos</small>
+                                            <div class="fw-bold text-primary">${player.score}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted">Satisfeitas</small>
+                                            <div class="fw-bold text-success">${player.satisfied}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted">Perfeitas</small>
+                                            <div class="fw-bold text-warning">${player.perfectSolutions}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(playerCard);
+                });
+            }
+            
+            updateLeaderboard() {
+                const container = document.getElementById('leaderboardContent');
+                const sortedPlayers = [...this.players].sort((a, b) => b.score - a.score);
+                
+                container.innerHTML = '';
+                
+                sortedPlayers.forEach((player, index) => {
+                    const isFirst = index === 0;
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+                    
+                    const leaderItem = document.createElement('div');
+                    leaderItem.className = `leader-item ${isFirst ? 'first' : ''}`;
+                    leaderItem.innerHTML = `
+                        <div>
+                            <span class="me-2">${medal}</span>
+                            <strong>${player.name}</strong>
+                            <small class="ms-2">${player.satisfied} satisfeitas</small>
+                        </div>
+                        <div class="text-end">
+                            <strong>${player.score} pts</strong>
+                        </div>
+                    `;
+                    container.appendChild(leaderItem);
+                });
+            }
+            
+            showToast(message, type = 'info') {
+                const toastContainer = document.getElementById('toast-container') || this.createToastContainer();
+                
+                const toastEl = document.createElement('div');
+                toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+                toastEl.setAttribute('role', 'alert');
+                toastEl.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                `;
+                
+                toastContainer.appendChild(toastEl);
+                const toast = new bootstrap.Toast(toastEl);
+                toast.show();
+                
+                toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+            }
+            
+            createToastContainer() {
+                const container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'toast-container position-fixed top-0 end-0 p-3';
+                container.style.zIndex = '1055';
+                document.body.appendChild(container);
+                return container;
+            }
+            
+            showModal(title, message) {
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-text').innerHTML = message;
+                const modal = new bootstrap.Modal(document.getElementById('gameModal'));
+                modal.show();
+            }
+        }
+        
+        let game = new SATGame();
+        
+        function setVariable(varName, value) {
+            game.setVariable(varName, value);
+        }
+        
+        function generateFormula() {
+            game.generateFormula();
+        }
+        
+        function checkSatisfiability() {
+            game.checkSatisfiability();
+        }
+        
+        function clearAssignment() {
+            game.clearAssignment();
+        }
+        
+        function passTurn() {
+            game.passTurn();
+        }
+        
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

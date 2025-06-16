@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Problema dos Generais Bizantinos - Consenso Distribuído</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .battlefield-container {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border-radius: 20px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            min-height: 300px;
+        }
+        
+        .battlefield-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
+            opacity: 0.3;
+        }
+        
+        .battlefield {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            z-index: 1;
+        }
+        
+        .city {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+        
+        .general {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 5;
+        }
+        
+        .general:hover {
+            transform: scale(1.1);
+        }
+        
+        .general.loyal {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            border: 2px solid #1e8449;
+        }
+        
+        .general.traitor {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            border: 2px solid #a93226;
+        }
+        
+        .general.commander {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            border: 2px solid #d68910;
+            width: 45px;
+            height: 45px;
+        }
+        
+        .general.player-controlled {
+            box-shadow: 0 0 15px #3498db;
+        }
+        
+        .message-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ecf0f1, transparent);
+            z-index: 1;
+            animation: messageFlow 2s ease-in-out;
+        }
+        
+        @keyframes messageFlow {
+            0% { opacity: 0; transform: scaleX(0); }
+            50% { opacity: 1; transform: scaleX(1); }
+            100% { opacity: 0; transform: scaleX(1); }
+        }
+        
+        .player-card {
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+        
+        .player-card.active {
+            border-color: #e74c3c !important;
+            background: linear-gradient(45deg, #fff5f5, #ffffff) !important;
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
+        }
+        
+        .player-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            margin-right: 15px;
+        }
+        
+        .player-1 { background: linear-gradient(45deg, #3498db, #2980b9); }
+        .player-2 { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+        .player-3 { background: linear-gradient(45deg, #f39c12, #e67e22); }
+        .player-4 { background: linear-gradient(45deg, #9b59b6, #8e44ad); }
+        
+        .current-player-indicator {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { box-shadow: 0 0 10px rgba(231, 76, 60, 0.5); }
+            to { box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }
+        }
+        
+        .leaderboard {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .leader-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin: 5px 0;
+        }
+        
+        .leader-item.first {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .round-indicator {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .message-log {
+            background: #2c3e50;
+            color: #ecf0f1;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 120px;
+            overflow-y: auto;
+        }
+        
+        .consensus-result {
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .consensus-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .consensus-failure {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <div class="text-center mb-4">
+                <h1 class="display-5 text-primary mb-2">⚔️ Generais Bizantinos</h1>
+                <p class="lead text-muted">Problema de Consenso em Sistemas Distribuídos</p>
+                <button class="btn btn-outline-secondary" onclick="goBack()">
+                    <i class="bi bi-arrow-left"></i> Voltar ao Menu
+                </button>
+            </div>
+            
+            <!-- Round Indicator -->
+            <div class="round-indicator" id="roundIndicator">
+                <i class="bi bi-clock"></i> Rodada <span id="currentRound">1</span> de <span id="maxRounds">10</span>
+            </div>
+            
+            <!-- Current Player Indicator -->
+            <div class="current-player-indicator" id="currentPlayerIndicator">
+                <i class="bi bi-person-circle"></i> Vez do <span id="currentPlayerName">Jogador 1</span>
+                <div class="mt-2">
+                    <small>Você é o comandante! Escolha sua ordem inicial</small>
+                </div>
+            </div>
+            
+            <!-- Leaderboard -->
+            <div class="leaderboard" id="leaderboard">
+                <h5 class="mb-3"><i class="bi bi-trophy"></i> Placar Geral</h5>
+                <div id="leaderboardContent"></div>
+            </div>
+            
+            <!-- Players Grid -->
+            <div class="row g-3 mb-4" id="playersGrid">
+                <!-- Player cards will be generated here -->
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <i class="bi bi-gear"></i> Dificuldade (Número de Traidores)
+                </div>
+                <div class="card-body">
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="traitors" id="traitors1" value="1" checked>
+                        <label class="btn btn-outline-primary" for="traitors1">Fácil (1 traidor)</label>
+                        
+                        <input type="radio" class="btn-check" name="traitors" id="traitors2" value="2">
+                        <label class="btn btn-outline-primary" for="traitors2">Médio (2 traidores)</label>
+                        
+                        <input type="radio" class="btn-check" name="traitors" id="traitors3" value="3">
+                        <label class="btn btn-outline-primary" for="traitors3">Difícil (3 traidores)</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="battlefield-container mb-4">
+                <div class="battlefield" id="battlefield">
+                    <div class="city">🏰</div>
+                    <!-- Generais serão posicionados aqui -->
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <i class="bi bi-megaphone"></i> Sua Decisão como Comandante
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-3">
+                                <button class="btn btn-danger btn-lg" onclick="sendOrder('attack')" id="attackBtn">
+                                    ⚔️ ATACAR a Cidade
+                                </button>
+                                <button class="btn btn-secondary btn-lg" onclick="sendOrder('retreat')" id="retreatBtn">
+                                    🛡️ RECUAR da Batalha
+                                </button>
+                            </div>
+                            
+                            <div class="mt-3" id="orderResult"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <i class="bi bi-controller"></i> Controles
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary" onclick="newRound()">
+                                    <i class="bi bi-arrow-right"></i> Nova Rodada
+                                </button>
+                                <button class="btn btn-outline-success" onclick="simulateRound()">
+                                    <i class="bi bi-cpu"></i> Simular Rodada
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card mb-3">
+                        <div class="card-header bg-info text-white">
+                            <i class="bi bi-chat-dots"></i> Log de Mensagens
+                        </div>
+                        <div class="card-body">
+                            <div class="message-log" id="messageLog">
+                                Aguardando sua decisão como comandante...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" id="consensusResult">
+                        <div class="card-header">
+                            <i class="bi bi-check-circle"></i> Resultado do Consenso
+                        </div>
+                        <div class="card-body" id="consensus-details">
+                            Aguardando decisões...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-warning" role="alert">
+                <h5 class="alert-heading"><i class="bi bi-lightbulb"></i> Problema dos Generais Bizantinos</h5>
+                <p><strong>Cenário:</strong> Generais bizantinos precisam coordenar um ataque, mas alguns podem ser traidores que enviam mensagens falsas.</p>
+                <p><strong>Desafio:</strong> Como alcançar consenso entre nós leais quando alguns nós podem ser maliciosos?</p>
+                <p><strong>Aplicações:</strong> Blockchain, sistemas distribuídos, tolerância a falhas em redes.</p>
+                <p class="mb-0"><strong>Teorema:</strong> É impossível alcançar consenso se mais de 1/3 dos nós forem traidores!</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal fade" id="gameModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title">Resultado</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modal-text"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Continuar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        class ByzantineGeneralsGame {
+            constructor() {
+                this.parseURLParams();
+                this.currentPlayer = 0;
+                this.currentRound = 1;
+                this.maxRounds = 10;
+                this.numTraitors = 1;
+                this.gameEnded = false;
+                this.roundActive = false;
+                
+                this.players = [];
+                this.initializePlayers();
+                
+                this.generals = [];
+                this.messages = [];
+                
+                this.initializeEventListeners();
+                this.setupBattlefield();
+                this.updateUI();
+            }
+            
+            parseURLParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                this.playerCount = parseInt(urlParams.get('playerCount')) || 2;
+                
+                try {
+                    this.playerNames = JSON.parse(urlParams.get('players')) || ['Jogador 1', 'Jogador 2'];
+                } catch {
+                    this.playerNames = ['Jogador 1', 'Jogador 2'];
+                }
+                
+                while (this.playerNames.length < this.playerCount) {
+                    this.playerNames.push(`Jogador ${this.playerNames.length + 1}`);
+                }
+            }
+            
+            initializePlayers() {
+                for (let i = 0; i < this.playerCount; i++) {
+                    this.players.push({
+                        name: this.playerNames[i],
+                        score: 0,
+                        consensusReached: 0,
+                        commandsGiven: 0,
+                        roundsPlayed: 0
+                    });
+                }
+            }
+            
+            initializeEventListeners() {
+                document.querySelectorAll('input[name="traitors"]').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        this.numTraitors = parseInt(radio.value);
+                        this.setupBattlefield();
+                    });
+                });
+            }
+            
+            setupBattlefield() {
+                const battlefield = document.getElementById('battlefield');
+                
+                // Remove existing generals
+                battlefield.querySelectorAll('.general').forEach(g => g.remove());
+                battlefield.querySelectorAll('.message-line').forEach(m => m.remove());
+                
+                const totalGenerals = 3 + this.numTraitors * 2; // Minimum for Byzantine fault tolerance
+                this.generals = [];
+                
+                // Create generals in circular formation
+                const radius = Math.min(battlefield.offsetWidth, battlefield.offsetHeight) / 4;
+                const centerX = battlefield.offsetWidth / 2;
+                const centerY = battlefield.offsetHeight / 2;
+                
+                for (let i = 0; i < totalGenerals; i++) {
+                    const angle = (2 * Math.PI * i) / totalGenerals;
+                    const x = centerX + radius * Math.cos(angle) - 17.5;
+                    const y = centerY + radius * Math.sin(angle) - 17.5;
+                    
+                    const isTraitor = i < this.numTraitors;
+                    const isCommander = i === totalGenerals - 1; // Last one is commander
+                    
+                    const general = {
+                        id: i,
+                        x: x,
+                        y: y,
+                        isTraitor: isTraitor,
+                        isCommander: isCommander,
+                        decision: null,
+                        receivedMessages: []
+                    };
+                    
+                    this.generals.push(general);
+                    
+                    const generalElement = document.createElement('div');
+                    generalElement.className = 'general';
+                    generalElement.style.left = x + 'px';
+                    generalElement.style.top = y + 'px';
+                    generalElement.dataset.generalId = i;
+                    
+                    if (isCommander) {
+                        generalElement.classList.add('commander', 'player-controlled');
+                        generalElement.innerHTML = `<div>👑</div><div>CMD</div>`;
+                    } else if (isTraitor) {
+                        generalElement.classList.add('traitor');
+                        generalElement.innerHTML = `<div>🗡️</div><div>T${i+1}</div>`;
+                    } else {
+                        generalElement.classList.add('loyal');
+                        generalElement.innerHTML = `<div>🛡️</div><div>L${i+1}</div>`;
+                    }
+                    
+                    battlefield.appendChild(generalElement);
+                }
+                
+                this.updateGeneralCount();
+            }
+            
+            sendOrder(order) {
+                if (this.roundActive || this.gameEnded) return;
+                
+                const currentPlayerData = this.players[this.currentPlayer];
+                currentPlayerData.commandsGiven++;
+                this.roundActive = true;
+                
+                // Commander sends order to all lieutenants
+                const commander = this.generals.find(g => g.isCommander);
+                commander.decision = order;
+                
+                this.messages = [];
+                
+                // Send messages from commander to all lieutenants
+                this.generals.forEach(general => {
+                    if (!general.isCommander) {
+                        const message = {
+                            from: commander.id,
+                            to: general.id,
+                            order: order,
+                            round: 1
+                        };
+                        this.messages.push(message);
+                        general.receivedMessages.push(message);
+                    }
+                });
+                
+                this.logMessage(`${currentPlayerData.name} (Comandante) enviou ordem: ${order.toUpperCase()}`);
+                this.showToast(`📡 Ordem "${order}" enviada para todos os tenentes!`, 'info');
+                
+                // Simulate traitor behavior
+                this.simulateTraitorMessages();
+                
+                // Animate message sending
+                this.animateMessages();
+                
+                // Evaluate consensus after simulation
+                setTimeout(() => {
+                    this.evaluateConsensus(order);
+                }, 3000);
+            }
+            
+            simulateTraitorMessages() {
+                // Traitors send conflicting messages
+                this.generals.filter(g => g.isTraitor).forEach(traitor => {
+                    this.generals.filter(g => !g.isCommander && g.id !== traitor.id).forEach(target => {
+                        // Traitors send opposite or random orders
+                        const currentOrder = this.generals.find(g => g.isCommander).decision;
+                        const falseOrder = currentOrder === 'attack' ? 'retreat' : 'attack';
+                        const message = {
+                            from: traitor.id,
+                            to: target.id,
+                            order: Math.random() > 0.5 ? falseOrder : currentOrder,
+                            round: 2,
+                            isFalse: true
+                        };
+                        this.messages.push(message);
+                        target.receivedMessages.push(message);
+                    });
+                });
+                
+                this.logMessage(`Traidores enviaram mensagens conflitantes...`);
+            }
+            
+            evaluateConsensus(originalOrder) {
+                // Simulate loyal lieutenants' decisions based on majority of messages received
+                this.generals.filter(g => !g.isCommander && !g.isTraitor).forEach(general => {
+                    const attackMessages = general.receivedMessages.filter(m => m.order === 'attack').length;
+                    const retreatMessages = general.receivedMessages.filter(m => m.order === 'retreat').length;
+                    
+                    // Loyal generals follow majority, with tie-breaking toward commander's original order
+                    if (attackMessages > retreatMessages) {
+                        general.decision = 'attack';
+                    } else if (retreatMessages > attackMessages) {
+                        general.decision = 'retreat';
+                    } else {
+                        general.decision = originalOrder; // Follow commander in case of tie
+                    }
+                });
+                
+                const loyalGenerals = this.generals.filter(g => !g.isTraitor);
+                const decisions = loyalGenerals.map(g => g.decision).filter(d => d !== null);
+                
+                const attackCount = decisions.filter(d => d === 'attack').length;
+                const retreatCount = decisions.filter(d => d === 'retreat').length;
+                
+                const consensusReached = attackCount === decisions.length || retreatCount === decisions.length;
+                const majorityDecision = attackCount > retreatCount ? 'attack' : 'retreat';
+                
+                let result = '';
+                let points = 0;
+                
+                if (consensusReached) {
+                    result = `✅ Consenso alcançado! Todos os generais leais decidiram: ${majorityDecision.toUpperCase()}`;
+                    points = majorityDecision === originalOrder ? 20 : 10;
+                    this.players[this.currentPlayer].consensusReached++;
+                } else {
+                    result = `❌ Consenso falhou! Decisões divididas: ${attackCount} atacar, ${retreatCount} recuar`;
+                    points = 5;
+                }
+                
+                // Bonus points for correct strategy against traitors
+                const traitorsDefeated = this.numTraitors <= Math.floor((loyalGenerals.length - 1) / 3);
+                if (consensusReached && traitorsDefeated) {
+                    points += 10;
+                    result += `<br>🎉 Bônus: Sistema resistiu aos traidores!`;
+                }
+                
+                this.players[this.currentPlayer].score += points;
+                
+                this.displayConsensusResult(result, consensusReached);
+                this.updateUI();
+                
+                // End round
+                setTimeout(() => {
+                    this.nextPlayer();
+                }, 4000);
+            }
+            
+            displayConsensusResult(result, success) {
+                const resultCard = document.getElementById('consensusResult');
+                const resultBody = document.getElementById('consensus-details');
+                
+                if (success) {
+                    resultCard.className = 'card border-success';
+                    resultCard.querySelector('.card-header').className = 'card-header bg-success text-white';
+                } else {
+                    resultCard.className = 'card border-danger';
+                    resultCard.querySelector('.card-header').className = 'card-header bg-danger text-white';
+                }
+                
+                resultBody.innerHTML = result;
+                
+                // Show detailed breakdown
+                const breakdown = this.generals.map(g => {
+                    const role = g.isCommander ? 'Comandante' : g.isTraitor ? 'Traidor' : 'Leal';
+                    const decision = g.decision || 'Sem decisão';
+                    return `${role}: ${decision}`;
+                }).join('<br>');
+                
+                resultBody.innerHTML += `<br><br><small>${breakdown}</small>`;
+            }
+            
+            nextPlayer() {
+                this.players[this.currentPlayer].roundsPlayed++;
+                this.currentPlayer = (this.currentPlayer + 1) % this.playerCount;
+                this.roundActive = false;
+                
+                // Reset for next player
+                this.generals.forEach(g => {
+                    g.decision = null;
+                    g.receivedMessages = [];
+                });
+                
+                this.messages = [];
+                this.clearMessageLog();
+                
+                if (this.allPlayersFinished()) {
+                    this.nextRound();
+                } else {
+                    this.setupBattlefield();
+                    this.updateUI();
+                }
+            }
+            
+            allPlayersFinished() {
+                return this.players.every(player => player.roundsPlayed >= this.currentRound);
+            }
+            
+            nextRound() {
+                this.currentRound++;
+                
+                if (this.currentRound > this.maxRounds) {
+                    this.endGame();
+                    return;
+                }
+                
+                // Reset for next round
+                this.currentPlayer = 0;
+                this.roundActive = false;
+                
+                this.setupBattlefield();
+                this.updateUI();
+                
+                this.showToast(`🎮 Rodada ${this.currentRound}/${this.maxRounds} iniciada!`, 'success');
+            }
+            
+            simulateRound() {
+                // Auto-play a round for demonstration
+                const orders = ['attack', 'retreat'];
+                const randomOrder = orders[Math.floor(Math.random() * orders.length)];
+                
+                this.sendOrder(randomOrder);
+            }
+            
+            newRound() {
+                if (this.currentRound <= this.maxRounds && !this.roundActive) {
+                    this.nextPlayer();
+                }
+            }
+            
+            animateMessages() {
+                // Visual representation of message passing
+                const battlefield = document.getElementById('battlefield');
+                
+                this.messages.forEach((message, index) => {
+                    setTimeout(() => {
+                        const fromGeneral = this.generals[message.from];
+                        const toGeneral = this.generals[message.to];
+                        
+                        const line = document.createElement('div');
+                        line.className = 'message-line';
+                        
+                        const fromX = fromGeneral.x + 17.5;
+                        const fromY = fromGeneral.y + 17.5;
+                        const toX = toGeneral.x + 17.5;
+                        const toY = toGeneral.y + 17.5;
+                        
+                        const length = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
+                        const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+                        
+                        line.style.width = length + 'px';
+                        line.style.left = fromX + 'px';
+                        line.style.top = fromY + 'px';
+                        line.style.transformOrigin = '0 50%';
+                        line.style.transform = `rotate(${angle}deg)`;
+                        
+                        if (message.isFalse) {
+                            line.style.background = 'linear-gradient(90deg, transparent, #e74c3c, transparent)';
+                        }
+                        
+                        battlefield.appendChild(line);
+                        
+                        setTimeout(() => line.remove(), 2000);
+                    }, index * 200);
+                });
+            }
+            
+            logMessage(message) {
+                const log = document.getElementById('messageLog');
+                const time = new Date().toLocaleTimeString();
+                log.innerHTML += `<div>[${time}] ${message}</div>`;
+                log.scrollTop = log.scrollHeight;
+            }
+            
+            clearMessageLog() {
+                document.getElementById('messageLog').innerHTML = 'Aguardando sua decisão como comandante...';
+            }
+            
+            updateGeneralCount() {
+                const loyalCount = this.generals.filter(g => !g.isTraitor).length;
+                // Update any displays that show general counts if needed
+            }
+            
+            endGame() {
+                this.gameEnded = true;
+                
+                const sortedPlayers = [...this.players].sort((a, b) => b.score - a.score);
+                
+                let message = `🏆 Fim do Jogo!<br><br>`;
+                message += `📊 Resultado Final:<br>`;
+                
+                sortedPlayers.forEach((player, index) => {
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+                    message += `${medal} ${index + 1}º - ${player.name}: ${player.score} pontos<br>`;
+                    message += `&nbsp;&nbsp;&nbsp;&nbsp;└ ${player.consensusReached} consensos alcançados<br>`;
+                });
+                
+                message += `<br><small>O Problema dos Generais Bizantinos é fundamental para sistemas distribuídos e blockchain!</small>`;
+                
+                this.showModal('Fim do Jogo!', message);
+            }
+            
+            updateUI() {
+                // Update round indicator
+                document.getElementById('currentRound').textContent = this.currentRound;
+                document.getElementById('maxRounds').textContent = this.maxRounds;
+                
+                // Update current player indicator
+                const currentPlayerData = this.players[this.currentPlayer];
+                document.getElementById('currentPlayerName').textContent = currentPlayerData.name;
+                
+                // Update button states
+                const attackBtn = document.getElementById('attackBtn');
+                const retreatBtn = document.getElementById('retreatBtn');
+                
+                attackBtn.disabled = this.roundActive || this.gameEnded;
+                retreatBtn.disabled = this.roundActive || this.gameEnded;
+                
+                // Update order result
+                if (this.roundActive) {
+                    document.getElementById('orderResult').innerHTML = '<em>Processando consenso...</em>';
+                } else {
+                    document.getElementById('orderResult').innerHTML = '';
+                }
+                
+                // Update players grid
+                this.updatePlayersGrid();
+                
+                // Update leaderboard
+                this.updateLeaderboard();
+            }
+            
+            updatePlayersGrid() {
+                const container = document.getElementById('playersGrid');
+                container.innerHTML = '';
+                
+                this.players.forEach((player, index) => {
+                    const colClass = this.playerCount <= 2 ? 'col-md-6' : 'col-lg-3 col-md-6';
+                    const isActive = index === this.currentPlayer;
+                    
+                    const playerCard = document.createElement('div');
+                    playerCard.className = colClass;
+                    playerCard.innerHTML = `
+                        <div class="card player-card ${isActive ? 'active' : ''} border-primary">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="player-avatar player-${index + 1}">
+                                    ${index + 1}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title mb-1">${player.name}</h6>
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <small class="text-muted">Pontos</small>
+                                            <div class="fw-bold text-primary">${player.score}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted">Consensos</small>
+                                            <div class="fw-bold text-success">${player.consensusReached}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-muted">Comandos</small>
+                                            <div class="fw-bold text-info">${player.commandsGiven}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(playerCard);
+                });
+            }
+            
+            updateLeaderboard() {
+                const container = document.getElementById('leaderboardContent');
+                const sortedPlayers = [...this.players].sort((a, b) => b.score - a.score);
+                
+                container.innerHTML = '';
+                
+                sortedPlayers.forEach((player, index) => {
+                    const isFirst = index === 0;
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+                    
+                    const leaderItem = document.createElement('div');
+                    leaderItem.className = `leader-item ${isFirst ? 'first' : ''}`;
+                    leaderItem.innerHTML = `
+                        <div>
+                            <span class="me-2">${medal}</span>
+                            <strong>${player.name}</strong>
+                            <small class="ms-2">${player.consensusReached} consensos</small>
+                        </div>
+                        <div class="text-end">
+                            <strong>${player.score} pts</strong>
+                        </div>
+                    `;
+                    container.appendChild(leaderItem);
+                });
+            }
+            
+            showToast(message, type = 'info') {
+                const toastContainer = document.getElementById('toast-container') || this.createToastContainer();
+                
+                const toastEl = document.createElement('div');
+                toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+                toastEl.setAttribute('role', 'alert');
+                toastEl.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                `;
+                
+                toastContainer.appendChild(toastEl);
+                const toast = new bootstrap.Toast(toastEl);
+                toast.show();
+                
+                toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+            }
+            
+            createToastContainer() {
+                const container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'toast-container position-fixed top-0 end-0 p-3';
+                container.style.zIndex = '1055';
+                document.body.appendChild(container);
+                return container;
+            }
+            
+            showModal(title, message) {
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-text').innerHTML = message;
+                const modal = new bootstrap.Modal(document.getElementById('gameModal'));
+                modal.show();
+            }
+        }
+        
+        let game = new ByzantineGeneralsGame();
+        
+        function sendOrder(order) {
+            game.sendOrder(order);
+        }
+        
+        function newRound() {
+            game.newRound();
+        }
+        
+        function simulateRound() {
+            game.simulateRound();
+        }
+        
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
